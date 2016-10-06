@@ -13,6 +13,9 @@ fromAddress = 'corn@bt.com'
 # Simple Regex for syntax checking
 regex = '^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$'
 
+cachedDomain = ''
+mxRecords = None
+
 
 # inputAddress = input('Please enter the emailAddress to verify:')
 # addressToVerify = "sekpo22@gmail.com"
@@ -36,18 +39,13 @@ def smtpConversation(email, mxRecord):
 		if code == 250:
 			return 'OK'
 		else:
-			return 'BAD'
+			return 'BAD, %s' % mxRecord
 	except Exception as e:
-		return "Error: %s" % str(e)
+		return "Error: %s, %s" % (str(e), mxRecord)
 
 
-def getMXRecordLookup(email):
+def getMXRecordLookup(domain):
 	try:
-		# Get domain for DNS lookup
-		splitAddress = email.split('@')
-		domain = str(splitAddress[1])
-		# print('Domain:', domain)
-
 		# MX record lookup
 		return dns.resolver.query(domain, 'MX')
 		# print(len(records))
@@ -63,7 +61,21 @@ def checkEmailSyntax(email):
 
 def validateEmailAddress(email):
 	if checkEmailSyntax(email) != None:
-		mxRecords = getMXRecordLookup(email)
+
+		# Get domain for DNS lookup
+		splitAddress = email.split('@')
+		domain = str(splitAddress[1])
+
+		global cachedDomain
+		global mxRecords
+		if cachedDomain == None or cachedDomain != domain:
+			mxRecords = getMXRecordLookup(domain)
+			cachedDomain = domain
+			print('Getting new mxRecords...	|	' + domain + '	|	'+ str(mxRecords[0].exchange))
+		else:
+			print('Reusing mxRecords...		|	' + domain + '	|	'+ str(mxRecords[0].exchange))
+
+		# mxRecords = getMXRecordLookup(domain)
 		if mxRecords != None and len(mxRecords) > 0:
 			# for record in mxRecords:
 			# 	exchange = str(record.exchange)
@@ -71,7 +83,8 @@ def validateEmailAddress(email):
 			# 	print(exchange + " : " + result)
 
 			exchange = str(mxRecords[0].exchange)
-			return smtpConversation(email, exchange)
+			# return smtpConversation(email, exchange)
+			return 'OK'
 		else:
 			return 'Missing MX record'
 	else:
@@ -100,6 +113,7 @@ with open('output.csv', 'w') as outputFile:
 		reader = csv.reader(f)
 		for row in reader:
 			emailToVerify = row[1]
+			# row.append('OK')
 			row.append(validateEmailAddress(emailToVerify))
 			thedatawriter.writerow(row)
 			# print(emailToVerify + ": " + validateEmailAddress(emailToVerify))
@@ -108,7 +122,6 @@ with open('output.csv', 'w') as outputFile:
 		outputFile.close()
 
 print("Took: " + str(getCurrentTime() - t1))
-
 
 
 
