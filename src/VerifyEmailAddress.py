@@ -5,6 +5,7 @@ import dns.resolver
 import csv
 import sys
 import time
+import os
 
 
 # Address used for SMTP MAIL FROM command  
@@ -71,9 +72,9 @@ def validateEmailAddress(email):
 		if cachedDomain == None or cachedDomain != domain:
 			mxRecords = getMXRecordLookup(domain)
 			cachedDomain = domain
-			print('Getting new mxRecords...	|	' + domain + '	|	'+ str(mxRecords[0].exchange))
-		else:
-			print('Reusing mxRecords...		|	' + domain + '	|	'+ str(mxRecords[0].exchange))
+			# print('Getting new mxRecords...	|	' + domain + '	|	'+ str(mxRecords[0].exchange))
+		# else:
+			# print('Reusing mxRecords...		|	' + domain + '	|	'+ str(mxRecords[0].exchange))
 
 		# mxRecords = getMXRecordLookup(domain)
 		if mxRecords != None and len(mxRecords) > 0:
@@ -83,8 +84,8 @@ def validateEmailAddress(email):
 			# 	print(exchange + " : " + result)
 
 			exchange = str(mxRecords[0].exchange)
-			# return smtpConversation(email, exchange)
-			return 'OK'
+			return smtpConversation(email, exchange)
+			# return 'OK'
 		else:
 			return 'Missing MX record'
 	else:
@@ -92,6 +93,17 @@ def validateEmailAddress(email):
 
 def getCurrentTime():
 	return int(round(time.time() * 1000))
+
+
+def progressBar(value, endvalue, status):
+
+	status = status.strip()
+	percent = float(value) / endvalue
+
+	sys.stdout.write("\rProgress: %i/%i (%i) - [ %s ------------- ] " % (value, endvalue, int(round(percent * 100)), status))
+	sys.stdout.flush()
+
+
 
 #Read from file line by line
 # with open("input.csv") as f:
@@ -108,20 +120,31 @@ with open('output.csv', 'w') as outputFile:
 	thedatawriter = csv.writer(outputFile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
 
 	#read file
+	totalEntries = int(os.popen('wc -l < input.csv').read()[:]) + 1
 	f = open("input.csv")
 	try:
 		reader = csv.reader(f)
+		counter = 0;
 		for row in reader:
+			counter += 1;
+
 			emailToVerify = row[1]
-			# row.append('OK')
+
+			# records = getMXRecordLookup(emailToVerify)
+			# if records != None and len(records) > 0:
+			# 	row.append("OK")
+			# else:
+			# 	row.append("Invalid domain")
+
 			row.append(validateEmailAddress(emailToVerify))
+			
+			progressBar(counter, totalEntries, emailToVerify)
 			thedatawriter.writerow(row)
-			# print(emailToVerify + ": " + validateEmailAddress(emailToVerify))
 	finally:
 		f.close()
 		outputFile.close()
 
-print("Took: " + str(getCurrentTime() - t1))
+print("\nTook: " + str((getCurrentTime() - t1) / 1000) + "s")
 
 
 
